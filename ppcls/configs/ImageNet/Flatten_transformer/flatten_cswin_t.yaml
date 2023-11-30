@@ -1,0 +1,245 @@
+# DATA:
+#   IMG_SIZE: 224
+#   BATCH_SIZE: 256
+
+# TRAIN:
+#   WEIGHT_DECAY: 0.05
+#   EPOCHS: 300
+#   WARMUP_EPOCHS: 20
+#   COOLDOWN_EPOCHS: 10
+#   BASE_LR: 5e-4
+#   WARMUP_LR: 1e-6
+#   MIN_LR: 1e-5
+#   CLIP_GRAD: None
+
+# MODEL:
+#   TYPE: FLatten_CSWin_64_24181_tiny_224
+#   NAME: FLatten_CSWin_tiny
+#   DROP_PATH_RATE: 0.2
+#   LA:
+#     ATTN_TYPE: LLSS
+
+
+# global configs
+Global:
+  checkpoints: null
+  # pretrained_model: null
+  pretrained_model: null
+  output_dir: ./output/
+  device: gpu
+  save_interval: 1
+  eval_during_train: True
+  eval_interval: 1
+  epochs: 200
+  print_batch_step: 10
+  use_visualdl: False
+  # used for static mode and model export
+  image_shape: [3, 224, 224]
+  save_inference_dir: ./inference
+
+# model architecture
+Arch:
+  # name: ResNet50_vd
+  name: smt_base_224
+  class_num: 1000
+ 
+# loss function config for traing/eval process
+Loss:
+  Train:
+    - CELoss:
+        weight: 1.0
+        epsilon: 0.1
+  Eval:
+    - CELoss:
+        weight: 1.0
+
+
+Optimizer:
+  name: Momentum
+  momentum: 0.9
+  lr:
+    name: Cosine
+    learning_rate: 0.1
+  regularizer:
+    name: 'L2'
+    coeff: 0.00007
+
+
+# data loader for train and eval
+DataLoader:
+  Train:
+    dataset:
+      # name: ImageNetDataset
+      # image_root: ./dataset/ILSVRC2012/
+      # cls_label_path: ./dataset/ILSVRC2012/train_list.txt
+      # use flowers102 to test
+      name: ImageNetDataset
+      image_root: ./dataset/flowers102/
+      cls_label_path: ./dataset/flowers102/train_list.txt      
+      transform_ops:
+        - DecodeImage:
+            to_rgb: True
+            channel_first: False
+        - RandCropImage:
+            size: 224
+        - RandFlipImage:
+            flip_code: 1
+        - NormalizeImage:
+            scale: 1.0/255.0
+            mean: [0.485, 0.456, 0.406]
+            std: [0.229, 0.224, 0.225]
+            order: ''
+      batch_transform_ops:
+        - MixupOperator:
+            alpha: 0.2
+
+    sampler:
+      name: DistributedBatchSampler
+      # batch_size: 64
+      batch_size: 1
+      drop_last: False
+      shuffle: True
+    loader:
+      num_workers: 4
+      use_shared_memory: True
+
+  Eval:
+    dataset: 
+      # name: ImageNetDataset
+      # image_root: ./dataset/ILSVRC2012/
+      # cls_label_path: ./dataset/ILSVRC2012/val_list.txt
+      # use flowers102 to test
+      name: ImageNetDataset
+      image_root: ./dataset/flowers102/
+      cls_label_path: ./dataset/flowers102/val_list.txt      
+      transform_ops:
+        - DecodeImage:
+            to_rgb: True
+            channel_first: False
+        - ResizeImage:
+            resize_short: 256
+        - CropImage:
+            size: 224
+        - NormalizeImage:
+            scale: 1.0/255.0
+            mean: [0.485, 0.456, 0.406]
+            std: [0.229, 0.224, 0.225]
+            order: ''
+    sampler:
+      name: DistributedBatchSampler
+      # batch_size: 64
+      batch_size: 1
+      drop_last: False
+      shuffle: False
+    loader:
+      num_workers: 4
+      use_shared_memory: True
+
+Infer:
+  infer_imgs: docs/images/inference_deployment/whl_demo.jpg
+  # batch_size: 10
+  batch_size: 1
+  transforms:
+    - DecodeImage:
+        to_rgb: True
+        channel_first: False
+    - ResizeImage:
+        resize_short: 256
+    - CropImage:
+        size: 224
+    - NormalizeImage:
+        scale: 1.0/255.0
+        mean: [0.485, 0.456, 0.406]
+        std: [0.229, 0.224, 0.225]
+        order: ''
+    - ToCHWImage:
+  PostProcess:
+    name: Topk
+    topk: 5
+    class_id_map_file: ppcls/utils/imagenet1k_label_list.txt
+
+Metric:
+  Train:
+  Eval:
+    - TopkAcc:
+        topk: [1, 5]
+
+# ADD FOR SMT
+# MODEL:
+#   TYPE: biformer
+#   NAME: biformer_base
+#   load_release: False
+#   nb_classes: 1000
+#   drop: 0
+#   drop_path: 0.1
+# MODEL:
+#   TYPE: smt
+#   NAME: smt_base_224
+#   DROP_PATH_RATE: 0.3
+#   PRETRAINED: ''  # new
+#   RESUME: ''  # new
+#   NUM_CLASSES: 1000  # new
+#   DROP_RATE: 0.0  # new
+#   LABEL_SMOOTHING: 0.1  # new
+#   SMT:
+#     PATCH_SIZE: 4  # new
+#     IN_CHANS: 3  # new
+#     EMBED_DIMS: [64, 128, 256, 512]
+#     CA_NUM_HEADS: [4, 4, 4, -1]
+#     SA_NUM_HEADS: [-1, -1, 8, 16]
+#     MLP_RATIOS: [8, 6, 4, 2]
+#     QKV_BIAS: True
+#     QK_SCALE: None  # new  # none
+#     USE_LAYERSCALE: False  # new
+#     DEPTHS: [ 4, 6, 28, 2]
+#     CA_ATTENTIONS: [ 1, 1, 1, 0 ]
+#     HEAD_CONV: 7
+#     NUM_STAGES: 4  # new
+#     EXPAND_RATIO: 2
+
+DATA:
+  IMG_SIZE: 224
+  BATCH_SIZE: 256
+
+TRAIN:
+  USE_CHECKPOINT: False
+  CHECKPOINT_PATH: "D:\\deeplearning\\FLatten-Transformer-paddle\\trans_weights\\flatten_cswin_t_paddle_trans.pdparams"
+
+MODEL:
+  type: flatten_transformer
+  TYPE: FLatten_CSWin_64_24181_tiny_224
+  NAME: FLatten_CSWin_tiny
+  SWIN: 
+    PATCH_SIZE: 4
+    IN_CHANS: 3
+    EMBED_DIM: 96
+    DEPTHS: [2, 2, 6, 2]
+    NUM_HEADS: [3, 6, 12, 24]
+    WINDOW_SIZE: 7
+    MLP_RATIO: 4.
+    QKV_BIAS: True
+    QK_SCALE: None
+    KA: [7, 7, 7, 7]
+    DIM_REDUCTION: [4, 4, 4, 4]
+    STAGES: [True, True, True, True]
+    STAGES_NUM: [-1, -1, -1, -1]
+    RPB: True
+    PADDING_MODE: 'zeros'
+    SHARE_DWC_KERNEL: True
+    SHARE_QKV: False
+    APE: False
+    PATCH_NORM: True
+    LR_FACTOR: 2
+    DEPTHS_LR: [2, 2, 2, 2]
+    FUSION_TYPE: 'add'
+    STAGE_CFG: None
+
+  DROP_PATH_RATE: 0.2
+  DROP_RATE: 0.0
+  NUM_CLASSES: 1000
+
+  LA:
+    ATTN_TYPE: LLSS
+    FOCUSING_FACTOR: 3
+    KERNEL_SIZE: 5
+    CSWIN_LA_SPLIT_SIZE: '56-28-14-7'
